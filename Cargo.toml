@@ -1,0 +1,7 @@
+[package]
+name = "raspberry"
+version = "0.1.0"
+authors = ["Tom Arrell <tom.arrell@gmail.com>"]
+
+[dependencies]
+rppal = "0.7"
