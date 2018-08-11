@@ -1,13 +1,52 @@
+/*
+   Todo:
+       Write a Rust program which interacts with the ws2812b over SPI.
+
+   Info:
+       ws2812b can take bits at
+       f = 400kHz or 800kHz
+
+       To interact over SPI, each LED sequence (3 bytes) intended for the LEDs need to be converted to
+       a 9 byte sequence. This is because each bit gets turned into 3 SPI bits, and the frequency of the
+       SPI interface set to 3x that which the LED is expecting.
+
+       This turns out to look a little like this:
+
+       PWM LED (1): where
+           on time  = 0.8us +/-150ns
+           off time = 0.4us +/-150ns
+
+           |    START                      END
+           |    v                          v
+           |    ------------------
+           |    |                |
+           |    |                |
+           |    |                |
+           | ----                -----------
+           *--------------------------------
+
+        PWM LED (0): where
+            on time  = 0.4us +/-150ns
+            off time = 0.8us +/-150ns
+
+            |    START                      END
+            |    v                          v
+            |    ----------
+            |    |        |
+            |    |        |
+            |    |        |
+            | ----        -------------------
+            *--------------------------------
+
+        With SPI breaking this instead into 3 time sections. Where each can be pulled high or low individually.
+        We can therefore represent what would have been a PWM (1) with an SPI 110. And on the contrary,
+        represent a PWM (0) with an SPI 100.
+*/
+
 extern crate rppal;
 
-use std::thread;
-use std::time::Duration;
-
-use rppal::gpio::{Gpio, Level, Mode};
+use rppal::spi::{Bus, Mode, SlaveSelect, Spi};
 use rppal::system::DeviceInfo;
-
-// BCM Pin numbering
-const GPIO_LED: u8 = 18;
 
 fn main() {
     let device_info = DeviceInfo::new().unwrap();
@@ -17,11 +56,21 @@ fn main() {
         device_info.soc()
     );
 
-    let mut gpio = Gpio::new().unwrap();
-    gpio.set_mode(GPIO_LED, Mode::Output);
+    // SPI0 bus needs to be enabled. Runs on physical pin: 21, 19, 23, 24, 26.
+    let bus = Bus::Spi0;
 
-    // Blink an LED attached to the pin on and off
-    gpio.write(GPIO_LED, Level::High);
-    thread::sleep(Duration::from_millis(500));
-    gpio.write(GPIO_LED, Level::Low);
+    // Which device (pin) should listen to the SPI bus. We will be using SS0 pins. i.e. physical pin 21, et al.
+    let slave = SlaveSelect::Ss0;
+
+    // Maximum clock frequency (Hz).
+    let clock = 800000;
+    let mode = Mode::Mode0;
+
+    let mut panel = Spi::new(bus, slave, clock, mode).unwrap();
+
+    let led_buffer: [u8; 24] = [
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ];
+
+    let _ = panel.write(&led_buffer);
 }
