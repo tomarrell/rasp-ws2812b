@@ -45,6 +45,9 @@
 
 extern crate rppal;
 
+use std::thread;
+use std::time::Duration;
+
 use rppal::spi::{Bus, Mode, SlaveSelect, Spi};
 use rppal::system::DeviceInfo;
 
@@ -63,14 +66,20 @@ fn main() {
     let slave = SlaveSelect::Ss0;
 
     // Maximum clock frequency (Hz).
-    let clock = 800000;
+    let clock = 3 * 1000 * 1000; // 800 kHz
     let mode = Mode::Mode0;
 
     let mut panel = Spi::new(bus, slave, clock, mode).unwrap();
 
-    let led_buffer: [u8; 24] = [
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ];
+    // Send init frame
 
-    let _ = panel.write(&led_buffer);
+    // Makes first one green!!!
+    let led_buffer = [0b11011011u8, 0b01101101u8, 0b10110110u8];
+
+    // let led_buffer = [1, 1, 1];
+
+    let result = panel.write(&led_buffer);
+    println!("{:?}", result);
+
+    thread::sleep(Duration::from_millis(50));
 }
