@@ -1,48 +1,3 @@
-/*
-   Todo:
-       Write a Rust program which interacts with the ws2812b over SPI.
-
-   Info:
-       ws2812b can take bits at
-       f = 400kHz or 800kHz
-
-       To interact over SPI, each LED sequence (3 bytes) intended for the LEDs need to be converted to
-       a 9 byte sequence. This is because each bit gets turned into 3 SPI bits, and the frequency of the
-       SPI interface set to 3x that which the LED is expecting.
-
-       This turns out to look a little like this:
-
-       PWM LED (1): where
-           on time  = 0.8us +/-150ns
-           off time = 0.4us +/-150ns
-
-           |    START                      END
-           |    v                          v
-           |    ------------------
-           |    |                |
-           |    |                |
-           |    |                |
-           | ----                -----------
-           *--------------------------------
-
-        PWM LED (0): where
-            on time  = 0.4us +/-150ns
-            off time = 0.8us +/-150ns
-
-            |    START                      END
-            |    v                          v
-            |    ----------
-            |    |        |
-            |    |        |
-            |    |        |
-            | ----        -------------------
-            *--------------------------------
-
-        With SPI breaking this instead into 3 time sections. Where each can be pulled high or low individually.
-        We can therefore represent what would have been a PWM (1) with an SPI 110. And on the contrary,
-        represent a PWM (0) with an SPI 100.
-*/
-
 extern crate rppal;
 
 use std::cmp;
@@ -57,14 +12,9 @@ use Bits::*;
 fn main() {
     print_device_info();
 
-    let mut panel = LED_Panel::new(256);
+    let mut panel = LedPanel::new(256);
 
-    // panel.clear_all_leds();
-    // panel.convert_and_show(&["000000", "000000"]);
-    // thread::sleep(Duration::from_millis(1000));
-
-
-    for x in 0..10 {
+    for _ in 0..10 {
         panel.clear_all_leds();
 
         panel.convert_and_write(&["330000", "003300"]);
@@ -85,12 +35,8 @@ fn main() {
     }
 }
 
-struct LED_Panel {
+struct LedPanel {
     buffer: String, // Using a String as we need arbitrary number of bits, to later be padded with 0's and converted to [u8].
-    bus: Bus,
-    slave: SlaveSelect,
-    clock_speed: u32,
-    mode: Mode,
     spi: Spi,
     num_leds: u32,
 }
@@ -101,26 +47,21 @@ enum Bits {
     _1,
 }
 
-impl LED_Panel {
-    fn new(num_leds: u32) -> LED_Panel {
+impl LedPanel {
+    fn new(num_leds: u32) -> LedPanel {
         let buffer = String::new();
         let bus = Bus::Spi0; // SPI0 bus needs to be enabled. Runs on physical pin: 21, 19, 23, 24, 26.
         let slave = SlaveSelect::Ss0; // Which device (pin) should listen to the SPI bus. We will be using SS0 pins. i.e. physical pin 21, et al.
         let clock_speed = 3 * 1000 * 1000; // Maximum clock frequency (Hz).
         let mode = Mode::Mode0;
 
-        LED_Panel {
+        LedPanel {
             buffer,
-            bus,
-            slave,
-            clock_speed,
-            mode,
             spi: Spi::new(bus, slave, clock_speed, mode).unwrap(),
             num_leds,
         }
     }
 
-    // Push to bit buffer.
     fn push(&mut self, bits: &str) -> &str {
         self.buffer.push_str(bits);
         &self.buffer
@@ -151,14 +92,14 @@ impl LED_Panel {
             .map(|val| u8::from_str_radix(val, 2).unwrap())
             .collect::<Vec<u8>>();
 
-        self.spi.write(&output);
+        self.spi.write(&output).unwrap();
         self.clear_buffer();
     }
 
     fn convert_and_push(&mut self, hex_codes: &[&str]) {
         let matrix: Vec<Bits> = hex_codes
             .iter()
-            .map(|hex_code| LED_Panel::hex_to_bin(hex_code))
+            .map(|hex_code| LedPanel::hex_to_bin(hex_code))
             .collect::<String>()
             .chars()
             .map(|chr| {
@@ -205,9 +146,9 @@ impl LED_Panel {
             panic!("Hex length must be 6");
         }
 
-        let g: u8 = LED_Panel::hex_str_to_u8(hex.chars().skip(0).take(2).collect());
-        let r: u8 = LED_Panel::hex_str_to_u8(hex.chars().skip(2).take(2).collect());
-        let b: u8 = LED_Panel::hex_str_to_u8(hex.chars().skip(4).take(2).collect());
+        let g: u8 = LedPanel::hex_str_to_u8(hex.chars().skip(0).take(2).collect());
+        let r: u8 = LedPanel::hex_str_to_u8(hex.chars().skip(2).take(2).collect());
+        let b: u8 = LedPanel::hex_str_to_u8(hex.chars().skip(4).take(2).collect());
 
         format!("{:08b}{:08b}{:08b}", g, r, b)
     }
