@@ -51,5 +51,11 @@ To interact over SPI, each traditional LED sequence (3 bytes, 8 bits per colour 
 
 With the traditional period broken into 3 time sections, each can be pulled high or low individually. We can therefore represent what would have been a PWM (1) with an SPI `110`. And on the contrary, represent a PWM (0) with an SPI `100`.
 
+## Example
+An example of a Raspberry Pi controlling a flexible panel of WS2812b's:
+
+(Mario)
+![Image of Pixel Mario](./assets/mario.jpg)
+
 ## License
 Licensed under the GNU GPLv3.0
