@@ -27,10 +27,10 @@ fn main() {
         .iter()
         .map(|val| {
             match val {
-                0 => "010101", // Background
-                1 => "020000", // Boots
-                2 => "000200", // Skin
-                3 => "000002", // Clothes
+                0 => "000000", // Background
+                1 => "040101", // Boots
+                2 => "020100", // Skin
+                3 => "030000", // Clothes
                 _ => panic!("Invalid color"),
             }
         }).collect();
@@ -149,8 +149,8 @@ impl LedPanel {
             panic!("Hex length must be 6");
         }
 
-        let g: u8 = LedPanel::hex_str_to_u8(hex.chars().skip(0).take(2).collect());
-        let r: u8 = LedPanel::hex_str_to_u8(hex.chars().skip(2).take(2).collect());
+        let r: u8 = LedPanel::hex_str_to_u8(hex.chars().skip(0).take(2).collect());
+        let g: u8 = LedPanel::hex_str_to_u8(hex.chars().skip(2).take(2).collect());
         let b: u8 = LedPanel::hex_str_to_u8(hex.chars().skip(4).take(2).collect());
 
         format!("{:08b}{:08b}{:08b}", g, r, b)
