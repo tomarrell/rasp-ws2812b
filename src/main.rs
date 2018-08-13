@@ -27,17 +27,17 @@ fn main() {
         .iter()
         .map(|val| {
             match val {
-                0 => "dddddd",
-                1 => "795548",
-                2 => "ff9900",
-                3 => "f44236",
+                0 => "010101", // Background
+                1 => "020000", // Boots
+                2 => "000200", // Skin
+                3 => "000002", // Clothes
                 _ => panic!("Invalid color"),
             }
         }).collect();
 
     panel.convert_and_write(mario.as_slice());
-    thread::sleep(Duration::from_millis(1000));
-    panel.clear_all_leds();
+    // thread::sleep(Duration::from_millis(1000));
+    // panel.clear_all_leds();
 }
 
 struct LedPanel {
