@@ -45,40 +45,44 @@
 
 extern crate rppal;
 
+use std::cmp;
 use std::thread;
 use std::time::Duration;
-use std::cmp;
 
 use rppal::spi::{Bus, Mode, SlaveSelect, Spi};
 use rppal::system::DeviceInfo;
+use Bits::*;
 
-enum Bits {
-    _0,
-    _1,
-}
 
 fn main() {
     print_device_info();
 
-    let mut panel = LED_Panel::new();
+    let mut panel = LED_Panel::new(256);
 
-    use Bits::*;
-    let matrix: Vec<Bits> = vec![
-        _0, _0, _0, _0, _0, _0, _0, _1,
-        _0, _0, _0, _0, _0, _0, _0, _1,
-        _0, _0, _0, _0, _0, _0, _0, _1,
-    ];
+    // panel.clear_all_leds();
+    // panel.convert_and_show(&["000000", "000000"]);
+    // thread::sleep(Duration::from_millis(1000));
 
-    for val in matrix.iter() {
-        match val {
-            Bits::_1 => panel.push("110"),
-            Bits::_0 => panel.push("100"),
-            _ => panic!("Matrix value not recognized"),
-        };
+
+    for x in 0..10 {
+        panel.clear_all_leds();
+
+        panel.convert_and_write(&["330000", "003300"]);
+
+        thread::sleep(Duration::from_millis(500));
+        panel.clear_all_leds();
+        thread::sleep(Duration::from_millis(500));
+
+        panel.convert_and_write(&["330000", "003300", "330000", "003300"]);
+        thread::sleep(Duration::from_millis(500));
+        panel.clear_all_leds();
+        thread::sleep(Duration::from_millis(500));
+
+        panel.convert_and_write(&["330000", "003300", "330000", "003300", "330000", "003300"]);
+        thread::sleep(Duration::from_millis(500));
+        panel.clear_all_leds();
+        thread::sleep(Duration::from_millis(500));
     }
-
-    println!("{}", panel.buffer);
-    panel.write();
 }
 
 struct LED_Panel {
@@ -88,10 +92,17 @@ struct LED_Panel {
     clock_speed: u32,
     mode: Mode,
     spi: Spi,
+    num_leds: u32,
+}
+
+#[derive(Clone)]
+enum Bits {
+    _0,
+    _1,
 }
 
 impl LED_Panel {
-    fn new() -> LED_Panel {
+    fn new(num_leds: u32) -> LED_Panel {
         let buffer = String::new();
         let bus = Bus::Spi0; // SPI0 bus needs to be enabled. Runs on physical pin: 21, 19, 23, 24, 26.
         let slave = SlaveSelect::Ss0; // Which device (pin) should listen to the SPI bus. We will be using SS0 pins. i.e. physical pin 21, et al.
@@ -105,6 +116,7 @@ impl LED_Panel {
             clock_speed,
             mode,
             spi: Spi::new(bus, slave, clock_speed, mode).unwrap(),
+            num_leds,
         }
     }
 
@@ -114,6 +126,10 @@ impl LED_Panel {
         &self.buffer
     }
 
+    fn clear_buffer(&mut self) {
+        self.buffer.clear();
+    }
+
     fn write(&mut self) {
         // Pad with zeroes
         if self.buffer.len() % 8 != 0 {
@@ -121,20 +137,83 @@ impl LED_Panel {
             self.buffer.push_str(&"0".repeat(8 - (buf_len % 8)));
         }
 
+        let buffer = self.buffer.clone();
+        let mut cur = buffer.as_str();
         let mut v = vec![];
-        let mut cur = self.buffer.as_str();
-        let sub_len = 8;
         while !cur.is_empty() {
-            let (chunk, rest) = cur.split_at(cmp::min(sub_len, cur.len()));
+            let (chunk, rest) = cur.split_at(cmp::min(8, cur.len()));
             v.push(chunk);
             cur = rest;
         }
 
-        let output = v.iter().map(|val| {
-            u8::from_str_radix(val, 2).unwrap()
-        }).collect::<Vec<u8>>();
+        let output = v
+            .iter()
+            .map(|val| u8::from_str_radix(val, 2).unwrap())
+            .collect::<Vec<u8>>();
 
         self.spi.write(&output);
+        self.clear_buffer();
+    }
+
+    fn convert_and_push(&mut self, hex_codes: &[&str]) {
+        let matrix: Vec<Bits> = hex_codes
+            .iter()
+            .map(|hex_code| LED_Panel::hex_to_bin(hex_code))
+            .collect::<String>()
+            .chars()
+            .map(|chr| {
+                match chr {
+                    '0' => _0,
+                    '1' => _1,
+                    _ => panic!("Invalid character trying to convert to enum types: {}", chr),
+                }
+            })
+            .collect();
+
+        for val in matrix.iter() {
+            match val {
+                Bits::_1 => self.push("110"),
+                Bits::_0 => self.push("100"),
+            };
+        }
+    }
+
+    // Push to the buffer and write out
+    fn convert_and_write(&mut self, hex_codes: &[&str]) {
+        self.convert_and_push(hex_codes);
+        self.write();
+    }
+
+    // Turns all LEDs off and clears buffer
+    fn clear_all_leds(&mut self) {
+        self.clear_buffer();
+        let clear_codes = vec![_0; (self.num_leds * 8) as usize];
+
+        for val in clear_codes.iter() {
+            match val {
+                Bits::_1 => self.push("110"),
+                Bits::_0 => self.push("100"),
+            };
+        }
+
+        self.write();
+    }
+
+    // Hex string length should be 6
+    fn hex_to_bin(hex: &str) -> String {
+        if hex.len() != 6 {
+            panic!("Hex length must be 6");
+        }
+
+        let g: u8 = LED_Panel::hex_str_to_u8(hex.chars().skip(0).take(2).collect());
+        let r: u8 = LED_Panel::hex_str_to_u8(hex.chars().skip(2).take(2).collect());
+        let b: u8 = LED_Panel::hex_str_to_u8(hex.chars().skip(4).take(2).collect());
+
+        format!("{:08b}{:08b}{:08b}", g, r, b)
+    }
+
+    fn hex_str_to_u8(hex_str: String) -> u8 {
+        u8::from_str_radix(&hex_str, 16).unwrap()
     }
 }
 
