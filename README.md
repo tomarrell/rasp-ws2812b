@@ -18,7 +18,7 @@ A visual of the protocol is below.
 ```
 PWM LED (0): where
     on time  = 0.4us +/-150ns
-    off time = 0.8us +/-150ns
+    off time = 0.85us +/-150ns
     
 Volts
     |    START                      END
@@ -32,7 +32,7 @@ Volts
     
 PWM LED (1): where
    on time  = 0.8us +/-150ns
-   off time = 0.4us +/-150ns
+   off time = 0.45us +/-150ns
    
 Volts
     |    START                      END
