@@ -8,31 +8,36 @@ use rppal::spi::{Bus, Mode, SlaveSelect, Spi};
 use rppal::system::DeviceInfo;
 use Bits::*;
 
-
 fn main() {
     print_device_info();
 
     let mut panel = LedPanel::new(256);
 
-    for _ in 0..10 {
-        panel.clear_all_leds();
+    let mario: Vec<&str> = [
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 1, 0, 0, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 2, 2,
+        2, 0, 1, 1, 1, 1, 3, 3, 2, 1, 1, 1, 1, 0, 1, 2, 2, 1, 3, 0, 3, 3, 1, 1, 1, 2, 2, 1, 1, 1,
+        3, 3, 3, 3, 1, 1, 0, 0, 3, 3, 3, 2, 3, 3, 3, 2, 2, 1, 2, 1, 3, 3, 3, 3, 2, 2, 2, 2, 2, 1,
+        1, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 3, 3, 0, 3, 1, 1, 2, 1,
+        2, 1, 3, 3, 2, 3, 3, 3, 0, 0, 1, 1, 3, 3, 3, 3, 1, 1, 0, 2, 1, 1, 1, 1, 3, 0, 0, 3, 0, 2,
+        2, 1, 2, 0, 1, 1, 1, 2, 3, 3, 1, 1, 1, 1, 0, 2, 2, 2, 1, 1, 0, 0, 1, 2, 2, 0, 0, 0, 0, 0,
+        0, 0, 2, 0, 0, 0, 0, 1, 2, 2, 2, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ]
+        .iter()
+        .map(|val| {
+            match val {
+                0 => "dddddd",
+                1 => "795548",
+                2 => "ff9900",
+                3 => "f44236",
+                _ => panic!("Invalid color"),
+            }
+        }).collect();
 
-        panel.convert_and_write(&["330000", "003300"]);
-
-        thread::sleep(Duration::from_millis(500));
-        panel.clear_all_leds();
-        thread::sleep(Duration::from_millis(500));
-
-        panel.convert_and_write(&["330000", "003300", "330000", "003300"]);
-        thread::sleep(Duration::from_millis(500));
-        panel.clear_all_leds();
-        thread::sleep(Duration::from_millis(500));
-
-        panel.convert_and_write(&["330000", "003300", "330000", "003300", "330000", "003300"]);
-        thread::sleep(Duration::from_millis(500));
-        panel.clear_all_leds();
-        thread::sleep(Duration::from_millis(500));
-    }
+    panel.convert_and_write(mario.as_slice());
+    thread::sleep(Duration::from_millis(1000));
+    panel.clear_all_leds();
 }
 
 struct LedPanel {
@@ -102,12 +107,10 @@ impl LedPanel {
             .map(|hex_code| LedPanel::hex_to_bin(hex_code))
             .collect::<String>()
             .chars()
-            .map(|chr| {
-                match chr {
-                    '0' => _0,
-                    '1' => _1,
-                    _ => panic!("Invalid character trying to convert to enum types: {}", chr),
-                }
+            .map(|chr| match chr {
+                '0' => _0,
+                '1' => _1,
+                _ => panic!("Invalid character trying to convert to enum types: {}", chr),
             })
             .collect();
 
@@ -128,7 +131,7 @@ impl LedPanel {
     // Turns all LEDs off and clears buffer
     fn clear_all_leds(&mut self) {
         self.clear_buffer();
-        let clear_codes = vec![_0; (self.num_leds * 8) as usize];
+        let clear_codes = vec![_0; (self.num_leds * 24) as usize];
 
         for val in clear_codes.iter() {
             match val {
