@@ -9,8 +9,6 @@ use rppal::system::DeviceInfo;
 use Bits::*;
 
 fn main() {
-    print_device_info();
-
     let mut panel = LedPanel::new(256);
 
     let mario: Vec<&str> = [
@@ -24,22 +22,23 @@ fn main() {
         0, 0, 2, 0, 0, 0, 0, 1, 2, 2, 2, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ]
-        .iter()
-        .map(|val| {
-            match val {
-                0 => "000000", // Background
-                1 => "040101", // Boots
-                2 => "020100", // Skin
-                3 => "030000", // Clothes
-                _ => panic!("Invalid color"),
-            }
-        }).collect();
+    .iter()
+    .map(|val| {
+        match val {
+            0 => "000000", // Background
+            1 => "040101", // Boots
+            2 => "020100", // Skin
+            3 => "030000", // Clothes
+            _ => panic!("Invalid color"),
+        }
+    })
+    .collect();
 
     panel.convert_and_write(mario.as_slice());
 }
 
 struct LedPanel {
-    buffer: String, // Using a String as we need arbitrary number of bits, to later be padded with 0's and converted to [u8].
+    buffer: String,
     spi: Spi,
     num_leds: u32,
 }
@@ -52,11 +51,17 @@ enum Bits {
 
 impl LedPanel {
     fn new(num_leds: u32) -> LedPanel {
-        let buffer = String::new();
-        let bus = Bus::Spi0; // SPI0 bus needs to be enabled. Runs on physical pin: 21, 19, 23, 24, 26.
-        let slave = SlaveSelect::Ss0; // Which device (pin) should listen to the SPI bus. We will be using SS0 pins. i.e. physical pin 21, et al.
-        let clock_speed = 3 * 1000 * 1000; // Maximum clock frequency (Hz).
+        // SPI0 bus needs to be enabled.
+        // Runs on physical pin: 21, 19, 23, 24, 26.
+        let bus = Bus::Spi0;
         let mode = Mode::Mode0;
+
+        // Which device (pin) should listen to the SPI bus.
+        // We will be using SS0 pins. i.e. physical pin 21, et al.
+        let slave = SlaveSelect::Ss0;
+
+        let clock_speed = 3 * 1000 * 1000;
+        let buffer = String::new();
 
         LedPanel {
             buffer,
@@ -65,6 +70,7 @@ impl LedPanel {
         }
     }
 
+    // Append SPI bits to the buffer
     fn push(&mut self, bits: &str) -> &str {
         self.buffer.push_str(bits);
         &self.buffer
@@ -99,13 +105,15 @@ impl LedPanel {
         self.clear_buffer();
     }
 
+    // Convert panel bits into their SPI counterparts
+    // and push them onto the buffer.
     fn convert_and_push(&mut self, hex_codes: &[&str]) {
         let matrix: Vec<Bits> = hex_codes
             .iter()
             .map(|hex_code| LedPanel::hex_to_bin(hex_code))
             .collect::<String>()
             .chars()
-            .map(|chr| match chr {
+            .for_each(|chr| match chr {
                 '0' => _0,
                 '1' => _1,
                 _ => panic!("Invalid character trying to convert to enum types: {}", chr),
@@ -157,13 +165,4 @@ impl LedPanel {
     fn hex_str_to_u8(hex_str: String) -> u8 {
         u8::from_str_radix(&hex_str, 16).unwrap()
     }
-}
-
-fn print_device_info() {
-    let device_info = DeviceInfo::new().unwrap();
-    println!(
-        "Model: {} (SoC: {})",
-        device_info.model(),
-        device_info.soc()
-    );
 }
