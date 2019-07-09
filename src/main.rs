@@ -36,8 +36,6 @@ fn main() {
         }).collect();
 
     panel.convert_and_write(mario.as_slice());
-    // thread::sleep(Duration::from_millis(1000));
-    // panel.clear_all_leds();
 }
 
 struct LedPanel {
