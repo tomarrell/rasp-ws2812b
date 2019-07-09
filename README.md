@@ -1,7 +1,7 @@
-# Rasp-WS2812b
-Power WS2812b LEDs from your Raspberry Pi over SPI. This library leverages the Raspberry Pi's SPI interface through Linux's IOCTL sys calls in order to emulate the data transfer method required by the WS2812b.
+**NB: This was an experiment, and should not actually be used as a method to communicate with the WS2812b**
 
-**Note:** This is currently a heavy WIP. It is almost certainly unstable, and is subject to breaking changes.
+# Rasp-WS2812b
+Power WS2812b LEDs from your Raspberry Pi over SPI.
 
 ## How it works?
 The LEDs run with a scan frequency of no less than `400Hz`, with a data transfer rate of `800kbps`.
