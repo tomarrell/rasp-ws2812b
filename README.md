@@ -3,6 +3,8 @@
 # Rasp-WS2812b
 Power WS2812b LEDs from your Raspberry Pi over SPI.
 
+[Blogpost](https://blog.tomarrell.com/post/rust_and_leds)
+
 ## How it works?
 The LEDs run with a scan frequency of no less than `400Hz`, with a data transfer rate of `800kbps`.
 
