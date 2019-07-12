@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use rppal::spi::{Bus, Mode, SlaveSelect, Spi};
 use rppal::system::DeviceInfo;
-use Bits::*;
 
 fn main() {
     let mut panel = LedPanel::new(256);
@@ -38,15 +37,10 @@ fn main() {
 }
 
 struct LedPanel {
-    buffer: String,
+    /// stores [r, g, b] for each led
+    buffer: Vec<u8>,
     spi: Spi,
     num_leds: u32,
-}
-
-#[derive(Clone)]
-enum Bits {
-    _0,
-    _1,
 }
 
 impl LedPanel {
@@ -61,7 +55,7 @@ impl LedPanel {
         let slave = SlaveSelect::Ss0;
 
         let clock_speed = 3 * 1000 * 1000;
-        let buffer = String::new();
+        let buffer = Vec::new();
 
         LedPanel {
             buffer,
@@ -70,62 +64,64 @@ impl LedPanel {
         }
     }
 
-    // Append SPI bits to the buffer
-    fn push(&mut self, bits: &str) -> &str {
-        self.buffer.push_str(bits);
-        &self.buffer
-    }
-
-    fn clear_buffer(&mut self) {
-        self.buffer.clear();
-    }
-
     fn write(&mut self) {
-        // Pad with zeroes
-        if self.buffer.len() % 8 != 0 {
-            let buf_len = self.buffer.len();
-            self.buffer.push_str(&"0".repeat(8 - (buf_len % 8)));
-        }
-
-        let buffer = self.buffer.clone();
-        let mut cur = buffer.as_str();
-        let mut v = vec![];
-        while !cur.is_empty() {
-            let (chunk, rest) = cur.split_at(cmp::min(8, cur.len()));
-            v.push(chunk);
-            cur = rest;
-        }
-
-        let output = v
-            .iter()
-            .map(|val| u8::from_str_radix(val, 2).unwrap())
+        let output = self.buffer
+            .drain(..)
+            .flat_map(|val| LedPanel::byte_to_spi_bytes(val).to_vec())
             .collect::<Vec<u8>>();
 
         self.spi.write(&output).unwrap();
-        self.clear_buffer();
     }
 
     // Convert panel bits into their SPI counterparts
+    // 0 -> 001
+    // 1 -> 011
+    fn byte_to_spi_bytes(input: u8) -> [u8; 3] {
+        // first convert the u8 to 24 bits
+        let mut bool_array = [false; 24];
+        for bit_index in 0..8 {
+            let bit = input & (1 << bit_index) != 0;
+            let out_index = bit_index * 3;
+
+            // first bit is always 0
+            // this could be omitted because the array is initialized to false
+            bool_array[out_index] = false;
+
+            bool_array[out_index + 1] = bit;
+
+            // last bit is always 1
+            bool_array[out_index + 2] = true;
+        }
+
+        // then convert the 24 bits to three u8
+        [
+            LedPanel::bool_slice_to_u8(&bool_array[0..8]),
+            LedPanel::bool_slice_to_u8(&bool_array[8..16]),
+            LedPanel::bool_slice_to_u8(&bool_array[16..24]),
+        ]
+    }
+
+    fn bool_slice_to_u8(input: &[bool]) -> u8 {
+        if input.len() != 8 { panic!("bool to u8 conversion requires exactly 8 booleans") }
+
+        let mut out = 0b00000000u8;
+
+        for (carry_bit, flag) in input.iter().enumerate() {
+            if *flag { out += 0b00000001u8 << carry_bit }
+        }
+
+        out
+    }
+
+    // Convert hex code strings to bytes
     // and push them onto the buffer.
     fn convert_and_push(&mut self, hex_codes: &[&str]) {
-        let matrix: Vec<Bits> = hex_codes
+        hex_codes
             .iter()
-            .map(|hex_code| LedPanel::hex_to_bin(hex_code))
-            .collect::<String>()
-            .chars()
-            .for_each(|chr| match chr {
-                '0' => _0,
-                '1' => _1,
-                _ => panic!("Invalid character trying to convert to enum types: {}", chr),
-            })
-            .collect();
-
-        for val in matrix.iter() {
-            match val {
-                Bits::_1 => self.push("110"),
-                Bits::_0 => self.push("100"),
-            };
-        }
+            .for_each(|hex_code| {
+                let bytes = LedPanel::hex_to_bin(hex_code);
+                self.buffer.extend_from_slice(&bytes);
+            });
     }
 
     // Push to the buffer and write out
@@ -136,21 +132,16 @@ impl LedPanel {
 
     // Turns all LEDs off and clears buffer
     fn clear_all_leds(&mut self) {
-        self.clear_buffer();
-        let clear_codes = vec![_0; (self.num_leds * 24) as usize];
+        self.buffer.clear();
+        let mut clear_codes = vec![0; (self.num_leds * 3) as usize];
 
-        for val in clear_codes.iter() {
-            match val {
-                Bits::_1 => self.push("110"),
-                Bits::_0 => self.push("100"),
-            };
-        }
+        self.buffer.append(&mut clear_codes);
 
         self.write();
     }
 
     // Hex string length should be 6
-    fn hex_to_bin(hex: &str) -> String {
+    fn hex_to_bin(hex: &str) -> [u8; 3] {
         if hex.len() != 6 {
             panic!("Hex length must be 6");
         }
@@ -159,7 +150,7 @@ impl LedPanel {
         let g: u8 = LedPanel::hex_str_to_u8(hex.chars().skip(2).take(2).collect());
         let b: u8 = LedPanel::hex_str_to_u8(hex.chars().skip(4).take(2).collect());
 
-        format!("{:08b}{:08b}{:08b}", g, r, b)
+        [r, g, b]
     }
 
     fn hex_str_to_u8(hex_str: String) -> u8 {
