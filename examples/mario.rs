@@ -1,9 +1,9 @@
-use rasp_ws2812b::LedPanel;
+use rasp_ws2812b::{LedPanel, ColorRGB};
 
 fn main() {
     let mut panel = LedPanel::new(256);
 
-    let mario: Vec<&str> = [
+    let mario: Vec<ColorRGB> = [
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 1, 0, 0, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 2, 2,
         2, 0, 1, 1, 1, 1, 3, 3, 2, 1, 1, 1, 1, 0, 1, 2, 2, 1, 3, 0, 3, 3, 1, 1, 1, 2, 2, 1, 1, 1,
@@ -17,14 +17,14 @@ fn main() {
     .iter()
     .map(|val| {
         match val {
-            0 => "000000", // Background
-            1 => "040101", // Boots
-            2 => "020100", // Skin
-            3 => "030000", // Clothes
+            0 => ColorRGB(0x00, 0x00, 0x00), // Background
+            1 => ColorRGB(0x04, 0x01, 0x01), // Boots
+            2 => ColorRGB(0x02, 0x01, 0x00), // Skin
+            3 => ColorRGB(0x03, 0x00, 0x00), // Clothes
             _ => panic!("Invalid color"),
         }
     })
     .collect();
 
-    panel.convert_and_write(mario.as_slice());
+    panel.convert_and_write(&mario);
 }

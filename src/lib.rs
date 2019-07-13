@@ -7,6 +7,9 @@ pub struct LedPanel {
     num_leds: u32,
 }
 
+/// Stores color as a tuple of (Red, Green, Blue)
+pub struct ColorRGB (pub u8, pub u8, pub u8);
+
 impl LedPanel {
     pub fn new(num_leds: u32) -> LedPanel {
         // SPI0 bus needs to be enabled.
@@ -79,17 +82,17 @@ impl LedPanel {
 
     // Convert hex code strings to bytes
     // and push them onto the buffer.
-    fn convert_and_push(&mut self, hex_codes: &[&str]) {
+    fn convert_and_push(&mut self, hex_codes: &[ColorRGB]) {
         hex_codes
             .iter()
             .for_each(|hex_code| {
-                let bytes = LedPanel::hex_to_bin(hex_code);
-                self.buffer.extend_from_slice(&bytes);
+                // swapping here from RGB to the GRB expected by the LED panel
+                self.buffer.extend_from_slice(&[hex_code.1, hex_code.0, hex_code.2]);
             });
     }
 
     // Push to the buffer and write out
-    pub fn convert_and_write(&mut self, hex_codes: &[&str]) {
+    pub fn convert_and_write(&mut self, hex_codes: &[ColorRGB]) {
         self.convert_and_push(hex_codes);
         self.write();
     }
@@ -102,22 +105,5 @@ impl LedPanel {
         self.buffer.append(&mut clear_codes);
 
         self.write();
-    }
-
-    // Hex string length should be 6
-    fn hex_to_bin(hex: &str) -> [u8; 3] {
-        if hex.len() != 6 {
-            panic!("Hex length must be 6");
-        }
-
-        let r: u8 = LedPanel::hex_str_to_u8(hex.chars().skip(0).take(2).collect());
-        let g: u8 = LedPanel::hex_str_to_u8(hex.chars().skip(2).take(2).collect());
-        let b: u8 = LedPanel::hex_str_to_u8(hex.chars().skip(4).take(2).collect());
-
-        [r, g, b]
-    }
-
-    fn hex_str_to_u8(hex_str: String) -> u8 {
-        u8::from_str_radix(&hex_str, 16).unwrap()
     }
 }
