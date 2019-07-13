@@ -1,5 +1,8 @@
 use rppal::spi::{Bus, Mode, SlaveSelect, Spi};
 
+mod wire_protocol;
+use wire_protocol::byte_to_spi_bytes;
+
 pub struct LedPanel {
     /// stores [g, r, b] for each led (as opposed to the normal RGB)
     buffer: Vec<u8>,
@@ -34,50 +37,10 @@ impl LedPanel {
     fn write(&mut self) {
         let output = self.buffer
             .drain(..)
-            .flat_map(|val| LedPanel::byte_to_spi_bytes(val).to_vec())
+            .flat_map(|val| byte_to_spi_bytes(val).to_vec())
             .collect::<Vec<u8>>();
 
         self.spi.write(&output).unwrap();
-    }
-
-    // Convert panel bits into their SPI counterparts
-    // 0 -> 001
-    // 1 -> 011
-    fn byte_to_spi_bytes(input: u8) -> [u8; 3] {
-        // first convert the u8 to 24 bits
-        let mut bool_array = [false; 24];
-        for bit_index in 0..8 {
-            let bit = input & (1 << bit_index) != 0;
-            let out_index = bit_index * 3;
-
-            // first bit is always 0
-            // this could be omitted because the array is initialized to false
-            bool_array[out_index] = false;
-
-            bool_array[out_index + 1] = bit;
-
-            // last bit is always 1
-            bool_array[out_index + 2] = true;
-        }
-
-        // then convert the 24 bits to three u8
-        [
-            LedPanel::bool_slice_to_u8(&bool_array[0..8]),
-            LedPanel::bool_slice_to_u8(&bool_array[8..16]),
-            LedPanel::bool_slice_to_u8(&bool_array[16..24]),
-        ]
-    }
-
-    fn bool_slice_to_u8(input: &[bool]) -> u8 {
-        if input.len() != 8 { panic!("bool to u8 conversion requires exactly 8 booleans") }
-
-        let mut out = 0b0000_0000u8;
-
-        for (carry_bit, flag) in input.iter().enumerate() {
-            if *flag { out += 0b0000_0001u8 << carry_bit }
-        }
-
-        out
     }
 
     // Convert hex code strings to bytes
