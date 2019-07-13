@@ -26,5 +26,5 @@ fn main() {
     })
     .collect();
 
-    panel.convert_and_write(&mario);
+    panel.set_leds(&mario);
 }

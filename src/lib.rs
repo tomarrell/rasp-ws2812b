@@ -43,20 +43,13 @@ impl LedPanel {
         self.spi.write(&output).unwrap();
     }
 
-    // Convert hex code strings to bytes
-    // and push them onto the buffer.
-    fn convert_and_push(&mut self, hex_codes: &[ColorRGB]) {
+    pub fn set_leds(&mut self, hex_codes: &[ColorRGB]) {
         hex_codes
             .iter()
             .for_each(|hex_code| {
                 // swapping here from RGB to the GRB expected by the LED panel
                 self.buffer.extend_from_slice(&[hex_code.1, hex_code.0, hex_code.2]);
             });
-    }
-
-    // Push to the buffer and write out
-    pub fn convert_and_write(&mut self, hex_codes: &[ColorRGB]) {
-        self.convert_and_push(hex_codes);
         self.write();
     }
 
