@@ -1,7 +1,8 @@
 [package]
-name = "raspberry"
+name = "rasp_ws2812b"
 version = "0.1.0"
 authors = ["Tom Arrell <tom.arrell@gmail.com>"]
+edition = "2018"
 
 [dependencies]
 rppal = "0.7"

@@ -1,50 +1,14 @@
-extern crate rppal;
-
-use std::cmp;
-use std::thread;
-use std::time::Duration;
-
 use rppal::spi::{Bus, Mode, SlaveSelect, Spi};
-use rppal::system::DeviceInfo;
 
-fn main() {
-    let mut panel = LedPanel::new(256);
-
-    let mario: Vec<&str> = [
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 1, 0, 0, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 2, 2,
-        2, 0, 1, 1, 1, 1, 3, 3, 2, 1, 1, 1, 1, 0, 1, 2, 2, 1, 3, 0, 3, 3, 1, 1, 1, 2, 2, 1, 1, 1,
-        3, 3, 3, 3, 1, 1, 0, 0, 3, 3, 3, 2, 3, 3, 3, 2, 2, 1, 2, 1, 3, 3, 3, 3, 2, 2, 2, 2, 2, 1,
-        1, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 3, 3, 0, 3, 1, 1, 2, 1,
-        2, 1, 3, 3, 2, 3, 3, 3, 0, 0, 1, 1, 3, 3, 3, 3, 1, 1, 0, 2, 1, 1, 1, 1, 3, 0, 0, 3, 0, 2,
-        2, 1, 2, 0, 1, 1, 1, 2, 3, 3, 1, 1, 1, 1, 0, 2, 2, 2, 1, 1, 0, 0, 1, 2, 2, 0, 0, 0, 0, 0,
-        0, 0, 2, 0, 0, 0, 0, 1, 2, 2, 2, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ]
-    .iter()
-    .map(|val| {
-        match val {
-            0 => "000000", // Background
-            1 => "040101", // Boots
-            2 => "020100", // Skin
-            3 => "030000", // Clothes
-            _ => panic!("Invalid color"),
-        }
-    })
-    .collect();
-
-    panel.convert_and_write(mario.as_slice());
-}
-
-struct LedPanel {
-    /// stores [r, g, b] for each led
+pub struct LedPanel {
+    /// stores [g, r, b] for each led (as opposed to the normal RGB)
     buffer: Vec<u8>,
     spi: Spi,
     num_leds: u32,
 }
 
 impl LedPanel {
-    fn new(num_leds: u32) -> LedPanel {
+    pub fn new(num_leds: u32) -> LedPanel {
         // SPI0 bus needs to be enabled.
         // Runs on physical pin: 21, 19, 23, 24, 26.
         let bus = Bus::Spi0;
@@ -104,10 +68,10 @@ impl LedPanel {
     fn bool_slice_to_u8(input: &[bool]) -> u8 {
         if input.len() != 8 { panic!("bool to u8 conversion requires exactly 8 booleans") }
 
-        let mut out = 0b00000000u8;
+        let mut out = 0b0000_0000u8;
 
         for (carry_bit, flag) in input.iter().enumerate() {
-            if *flag { out += 0b00000001u8 << carry_bit }
+            if *flag { out += 0b0000_0001u8 << carry_bit }
         }
 
         out
@@ -125,13 +89,13 @@ impl LedPanel {
     }
 
     // Push to the buffer and write out
-    fn convert_and_write(&mut self, hex_codes: &[&str]) {
+    pub fn convert_and_write(&mut self, hex_codes: &[&str]) {
         self.convert_and_push(hex_codes);
         self.write();
     }
 
     // Turns all LEDs off and clears buffer
-    fn clear_all_leds(&mut self) {
+    pub fn clear_all_leds(&mut self) {
         self.buffer.clear();
         let mut clear_codes = vec![0; (self.num_leds * 3) as usize];
 
